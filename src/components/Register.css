@@ -1,0 +1,61 @@
+.register-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    /* background-color: #e7f6f2; */
+  }
+  
+  .register-box {
+    width: 100%;
+    padding: 20px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  .register-box h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #027368;
+  }
+  
+  .register-box form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .register-box input {
+    margin-bottom: 15px;
+    padding: 10px;
+    font-size: 14px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+  }
+  
+  .register-box button {
+    background-color: #027368;
+    color: white;
+    border: none;
+    padding: 12px;
+    font-size: 16px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .register-box button:hover {
+    background-color: #024c4a;
+  }
+  
+  .Toastify__toast--success {
+    background-color: #4caf50 !important;
+    color: white;
+  }
+  
+  .Toastify__toast--error {
+    background-color: #f44336 !important;
+    color: white;
+  }
+  
+  

@@ -1,0 +1,137 @@
+/* 🔹 Fullscreen Container */
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #bfe9f3;
+  padding: 10px;
+}
+
+/* 🔹 Login Box */
+.login-box {
+  display: flex;
+  flex-direction: row; /* Side-by-side on large screens */
+  width: 80%;
+  max-width: 850px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* 🔹 Form Container */
+.login-form {
+  flex: 1;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+/* 🔹 Title */
+.login-form h2 {
+  text-align: center;
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+/* 🔹 Logo */
+.login-logo {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.login-logo img {
+  width: 120px;
+  height: auto;
+}
+
+/* 🔹 Input Fields */
+.login-form input {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* 🔹 Button */
+.login-form button {
+  width: 100%;
+  background-color: #027368;
+  color: white;
+  border: none;
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.login-form button:hover {
+  background-color: #024c4a;
+}
+
+/* 🔹 Register Link */
+.redirect-text {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+  color: #000;
+}
+
+.redirect-text a {
+  color: #027368;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.redirect-text a:hover {
+  text-decoration: underline;
+}
+
+/* 🔹 Image Section */
+.login-image {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #f4f4f4;
+  padding: 20px;
+}
+
+.login-image img {
+  max-width: 100%;
+  height: auto;
+  object-fit: cover;
+  border-left: 1px solid #ddd;
+}
+
+/* 🔹 Mobile Responsiveness */
+@media (max-width: 768px) {
+  .login-box {
+    flex-direction: column;
+    width: 100%;
+    max-width: 400px;
+  }
+
+  .login-form {
+    padding: 20px;
+  }
+
+  .login-image {
+    display: none; /* Hide image on smaller screens */
+  }
+
+  .login-form input {
+    font-size: 14px;
+  }
+
+  .login-form button {
+    font-size: 14px;
+  }
+}

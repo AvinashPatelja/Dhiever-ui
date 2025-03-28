@@ -1,0 +1,398 @@
+/* 🔹 Main Dashboard Container */
+.dashboard-container {
+  padding: 20px;
+  background-color: #fff;
+  min-height: 85vh;
+  width: 100%;
+}
+
+/* 🔹 Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #ccc;
+  flex-wrap: wrap;
+}
+
+.welcome-message {
+  font-size: 18px;
+  color: #333;
+}
+
+/* 🔹 Logout Button */
+.logout-link button {
+  background-color: #027368;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.logout-link button:hover {
+  background-color: #024c4a;
+}
+
+/* 🔹 Dashboard Content */
+.dashboard-content {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+/* 🔹 Cards */
+.card {
+  width: 100%;
+  max-width: 420px; /* Limit card width */
+  background: #e7f6f2;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  text-align: center;
+}
+
+/* 🔹 Card Header */
+.card h3 {
+  margin-bottom: 10px;
+  color: #027368;
+  font-size: 20px;
+}
+
+/* 🔹 Card Body */
+.card-body {
+  padding: 10px;
+}
+
+/* 🔹 Icon Row */
+.icon-row {
+  display: flex;
+  justify-content: space-around;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+.icon-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 22%;
+}
+
+.icon-item p {
+  margin-top: 5px;
+  font-size: 12px;
+  color: #555;
+}
+
+/* 🔹 Device Image */
+.device-image {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px 0;
+}
+
+.device-image img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 🔹 Date Picker Container */
+.date-picker-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin: 10px 0;
+  width: 100%;
+}
+
+.date-picker-container label {
+  font-size: 14px;
+  font-weight: bold;
+  color: #000; /* Black labels */
+  margin-bottom: 5px;
+}
+
+.date-picker {
+  width: 90%;
+  padding: 10px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+/* 🔹 Buttons */
+.card-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.card-actions button {
+  flex: 1;
+  min-width: 120px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  background-color: #027368;
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+.card-actions button:hover {
+  background-color: #024c4a;
+}
+
+.card-actions button:disabled {
+  background-color: #b0bec5; /* Light gray */
+  color: #eceff1;           /* Faint white */
+  cursor: not-allowed;
+  box-shadow: none;
+  border: 1px solid #90a4ae; /* Slight border for contrast */
+}
+
+/* 🔹 Gate Valve Carousel Container */
+.gate-valves-container {
+  width: 100%;
+  max-width: 420px;
+  position: relative;
+}
+
+.gate-valves-carousel {
+  position: relative;
+  overflow: hidden;
+}
+
+.carousel-inner {
+  display: flex;
+  transition: transform 0.5s ease;
+}
+
+/* 🔹 Carousel Navigation */
+.carousel-nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.carousel-nav button {
+  background-color: #027368;
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.3s ease;
+}
+
+.carousel-nav button:hover {
+  background-color: #024c4a;
+}
+
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.carousel-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ccc;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.carousel-dot.active {
+  background-color: #027368;
+}
+
+/* 🔹 Device Card Header with ID */
+.device-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.device-id {
+  font-size: 14px;
+  color: #666;
+  font-style: italic;
+}
+
+/* 🔹 No Devices Message */
+.no-devices {
+  text-align: center;
+  color: #666;
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  margin: 20px auto;
+  max-width: 400px;
+}
+
+/* 🔹 Device Group Header */
+.device-group-header {
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+  margin-bottom: 10px;
+  color: #027368;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* 🔹 Add Device Button */
+.add-device-btn {
+  background-color: #027368;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 5px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 20px auto;
+  transition: background-color 0.3s ease;
+}
+
+.add-device-btn:hover {
+  background-color: #024c4a;
+}
+
+/* 🔹 Loading Container */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 50vh;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(0, 0, 0, 0.1);
+  border-top: 5px solid #027368;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px auto;
+  justify-content: center;
+}
+
+.toggle-label {
+  font-weight: bold;
+  color: #027368;
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider-round {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+.slider-round:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+.switch input:checked + .slider-round {
+  background-color: #027368;
+}
+
+.switch input:checked + .slider-round:before {
+  transform: translateX(24px);
+}
+
+
+
+/* 🔹 Responsive Design (For Mobile) */
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+
+  .dashboard-content {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .card {
+    width: 95%;
+  }
+
+  .icon-row {
+    justify-content: center;
+    gap: 15px;
+  }
+
+  .icon-item {
+    width: 40%;
+  }
+
+  .card-actions {
+    flex-direction: column;
+  }
+  
+  .gate-valves-container {
+    width: 95%;
+  }
+}
