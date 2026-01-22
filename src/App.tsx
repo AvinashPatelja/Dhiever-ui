@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Login from './components/Login';
-import Register from './components/Register';
-import Dashboard from './components/Dashboard';
-import ProtectedRoute from './components/ProtectedRoute';
-import './styles.css';
+import React, { useState } from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Login from "./components/Login";
+import Register from "./components/Register";
+import Dashboard from "./components/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+import "./styles.css";
+import DeviceRegistration from "./components/DeviceRegistration";
 
 const App: React.FC = () => {
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
@@ -22,6 +23,7 @@ const App: React.FC = () => {
             </ProtectedRoute>
           }
         />
+        <Route path="/device-registration" element={<DeviceRegistration />} />
       </Routes>
     </Router>
   );
