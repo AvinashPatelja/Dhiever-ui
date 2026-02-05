@@ -28,6 +28,8 @@ interface DeviceLiveData {
   endTime: string;
   deviceType: number;
   defaultGV: boolean;
+  battery: number;
+  batStatus: string;
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
@@ -407,8 +409,14 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
           )}
 
           {/* Gate Valve Motor Cards - Carousel */}
+          
           {gateValveDataList.length > 0 ? (
             <div className="card">
+              {currentGateValve?.batStatus == "Low" ? (
+                <span className="battery-status" style={{ color: 'red' }}>
+                  Battery: {currentGateValve?.battery}%   Status: {currentGateValve?.batStatus}
+                </span>
+              ):''}
               <h3>
                 Gate Valve Motor
                 {gateValveDataList.length === 1 ? (
