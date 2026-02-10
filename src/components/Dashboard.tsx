@@ -414,7 +414,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
             <div className="card">
               {currentGateValve?.batStatus == "Low" ? (
                 <span className="battery-status" style={{ color: 'red' }}>
-                  Battery: {currentGateValve?.battery}%   Status: {currentGateValve?.batStatus}
+                  Battery: {currentGateValve?.battery}V   Status: {currentGateValve?.batStatus}
                 </span>
               ):''}
               <h3>
