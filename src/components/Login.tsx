@@ -34,9 +34,12 @@ const Login = ({ setLoggedInUser }: LoginProps) => {
   return (
     <div className="login-container">
       <div className="login-box">
-        {/* Left: Login Form */}
         <div className="login-form">
-          <h2>Welcome to Dhiever!</h2>
+          <p className="login-eyebrow">Smart Motor Control</p>
+          <h2>Welcome to Dhiever</h2>
+          <p className="login-subtitle">
+            Sign in to monitor and schedule your devices in real time.
+          </p>
           <div className="login-logo">
             <img src={logo} alt="Logo" />
           </div>
@@ -62,9 +65,12 @@ const Login = ({ setLoggedInUser }: LoginProps) => {
           </p>
         </div>
 
-        {/* Right: Image Section (Hidden on Mobile) */}
         <div className="login-image">
-          <img src={loginImage} alt="Login Visual" />
+          <img src={loginImage} alt="Plant Monitoring Visual" />
+          <div className="login-image-overlay">
+            <h3>Connected Operations</h3>
+            <p>Secure control panel for 3 Phase and Gate Valve motors.</p>
+          </div>
         </div>
       </div>
     </div>

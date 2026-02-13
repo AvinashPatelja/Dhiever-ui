@@ -1,61 +1,175 @@
 .register-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    /* background-color: #e7f6f2; */
-  }
-  
-  .register-box {
-    width: 100%;
-    padding: 20px;
-    background: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  }
-  
-  .register-box h2 {
-    text-align: center;
-    margin-bottom: 20px;
-    color: #027368;
-  }
-  
-  .register-box form {
-    display: flex;
-    flex-direction: column;
-  }
-  
-  .register-box input {
-    margin-bottom: 15px;
-    padding: 10px;
-    font-size: 14px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-  
-  .register-box button {
-    background-color: #027368;
-    color: white;
-    border: none;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: radial-gradient(circle at 10% 15%, #f3f1ff, #ececf3 55%, #e6e8f2);
+}
+
+.register-box {
+  width: min(1020px, 100%);
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  background: #fff;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 24px 40px rgba(34, 36, 44, 0.14);
+}
+
+.register-form-wrap {
+  padding: 32px;
+  background: linear-gradient(180deg, #ffffff, #fafaff);
+}
+
+.register-eyebrow {
+  margin: 0;
+  font-size: 12px;
+  color: #7a7fa1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.register-form-wrap h2 {
+  margin: 6px 0 10px;
+  color: #2c2f3a;
+  font-size: 30px;
+}
+
+.register-logo {
+  width: 68px;
+  height: 68px;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  background: #f4f3ff;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 1px #e6e4ff;
+}
+
+.register-logo img {
+  width: 48px;
+  height: auto;
+}
+
+.register-box form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.register-box input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 11px 12px;
+  font-size: 14px;
+  border: 1px solid #d8dbe8;
+  border-radius: 12px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.register-box input:focus {
+  border-color: #7a63f1;
+  box-shadow: 0 0 0 3px rgba(122, 99, 241, 0.14);
+}
+
+.register-box input[name="password"],
+.register-box input[name="imei"] {
+  grid-column: span 2;
+}
+
+.register-box button {
+  grid-column: span 2;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #8e7cf6, #6f5de6);
+  cursor: pointer;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.register-box button:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.register-image {
+  position: relative;
+  min-height: 580px;
+}
+
+.register-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.register-image-overlay {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 20px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(21, 22, 28, 0.56);
+  backdrop-filter: blur(4px);
+  color: #f8f9ff;
+}
+
+.register-image-overlay h3 {
+  margin: 0 0 4px;
+}
+
+.register-image-overlay p {
+  margin: 0;
+  font-size: 13px;
+  color: #e3e7ff;
+}
+
+.Toastify__toast--success {
+  background-color: #2ead67 !important;
+  color: #fff;
+}
+
+.Toastify__toast--error {
+  background-color: #f04456 !important;
+  color: #fff;
+}
+
+@media (max-width: 768px) {
+  .register-container {
     padding: 12px;
-    font-size: 16px;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
   }
-  
-  .register-box button:hover {
-    background-color: #024c4a;
+
+  .register-box {
+    grid-template-columns: 1fr;
+    border-radius: 18px;
   }
-  
-  .Toastify__toast--success {
-    background-color: #4caf50 !important;
-    color: white;
+
+  .register-form-wrap {
+    padding: 22px;
   }
-  
-  .Toastify__toast--error {
-    background-color: #f44336 !important;
-    color: white;
+
+  .register-form-wrap h2 {
+    font-size: 24px;
   }
-  
-  
+
+  .register-box form {
+    grid-template-columns: 1fr;
+  }
+
+  .register-box input[name="password"],
+  .register-box input[name="imei"],
+  .register-box button {
+    grid-column: auto;
+  }
+
+  .register-image {
+    min-height: 180px;
+  }
+}

@@ -5,14 +5,15 @@ import Constants from "../Constants";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import TP from "/src/assets/images/3TP.png";
-import GV from "/src/assets/images/GV.png";
+import TP from "../assets/images/3TP.png";
+import GV from "../assets/images/GV.png";
 import {
   FaUser,
   FaMapMarkerAlt,
   FaThumbsUp,
-  FaChevronLeft,
-  FaChevronRight,
+  FaBolt,
+  FaBatteryHalf,
+  FaCheckCircle,
 } from "react-icons/fa";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -32,6 +33,8 @@ interface DeviceLiveData {
   batStatus: string;
 }
 
+type DeviceView = "tp" | "gv";
+
 const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
   const [startDateTP, setStartDateTP] = useState<Date | null>(new Date());
   const [stopDateTP, setStopDateTP] = useState<Date | null>(new Date());
@@ -43,18 +46,16 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
     []
   );
 
-  // For managing carousel
+  const [selectedView, setSelectedView] = useState<DeviceView>("tp");
   const [currentGateValveIndex, setCurrentGateValveIndex] = useState(0);
   const [gateValveDateSettings, setGateValveDateSettings] = useState<{
     [key: string]: { startDate: Date | null; stopDate: Date | null };
   }>({});
 
-  // Loading state
   const [loading, setLoading] = useState(true);
 
   const navigate = useNavigate();
 
-  // Get current gate valve device and its date settings
   const currentGateValve = gateValveDataList[currentGateValveIndex] || null;
 
   const getGateValveDateSettings = (imei: string) => {
@@ -82,20 +83,17 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
     let isMounted = true;
 
     const fetchData = async () => {
-      setLoading(true); // Start loading
+      setLoading(true);
       try {
         const response = await axios.get<DeviceLiveData[]>(
           `${Constants.BASE_URL}/Device/UserData/${loggedInUser}`
         );
-        console.log("API Response:", response.data);
 
         if (isMounted && response.data.length > 0) {
-          // Find the three phase device
           const threePhaseDevice = response.data.find(
             (device) => device.deviceType === 1
           );
 
-          // Find all gate valve devices
           const gateValveDevices = response.data.filter(
             (device) => device.deviceType === 2
           );
@@ -108,7 +106,6 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
             setStopDateTP(new Date(threePhaseDevice.endTime));
           }
 
-          // Initialize date settings for each gate valve
           const dateSettings: {
             [key: string]: { startDate: Date | null; stopDate: Date | null };
           } = {};
@@ -119,11 +116,15 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
             };
           });
           setGateValveDateSettings(dateSettings);
+
+          if (!threePhaseDevice && gateValveDevices.length > 0) {
+            setSelectedView("gv");
+          }
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
       } finally {
-        setLoading(false); // Stop loading after data is fetched
+        setLoading(false);
       }
     };
 
@@ -132,9 +133,8 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [loggedInUser]);
 
-  // Toggle Default Gate Valve
   const toggleDefaultGateValve = async (imei: string) => {
     try {
       const updatedGateValves = gateValveDataList.map((device) => ({
@@ -161,7 +161,6 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
     }
   };
 
-  // Function to send API request for updating device data
   const formatDateToLocal = (date: Date | null) => {
     if (!date) return null;
 
@@ -184,16 +183,13 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
 
     try {
       const requestBody = {
-        imei: imei,
-        status: status,
+        imei,
+        status,
         starTime: formatDateToLocal(startTime),
         endTime: formatDateToLocal(endTime),
       };
 
-      await axios.post(
-        `${Constants.BASE_URL}/Device/UpsertDeviceLive`,
-        requestBody
-      );
+      await axios.post(`${Constants.BASE_URL}/Device/UpsertDeviceLive`, requestBody);
 
       toast.success("Device data updated successfully!", {
         position: "top-right",
@@ -201,20 +197,16 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
       });
 
       setThreePhaseData(
-        threePhaseData ? { ...threePhaseData, status: status } : null
+        threePhaseData ? { ...threePhaseData, status } : null
       );
-      //setGateValveDataList(gateValveDataList?gateValveDataList.map(data => ({ ...data, status: status })) : []);
 
-      // Update only the gate valve with defaultGV: true
       if (status) {
         setGateValveDataList((prevList) =>
           prevList.map((device) =>
-            device.defaultGV ? { ...device, status: status } : device
+            device.defaultGV ? { ...device, status } : device
           )
         );
       }
-
-      console.log("Device data updated successfully");
     } catch (error) {
       console.error("Failed to update Device data:", error);
       toast.error("Failed to update device data", {
@@ -237,32 +229,24 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
 
     try {
       const requestBody = {
-        imei: imei,
-        status: status,
+        imei,
+        status,
         starTime: formatDateToLocal(startTime),
         endTime: formatDateToLocal(endTime),
       };
 
-      console.log("Sending API Request:", requestBody);
-
-      await axios.post(
-        `${Constants.BASE_URL}/Device/UpsertDeviceLive`,
-        requestBody
-      );
+      await axios.post(`${Constants.BASE_URL}/Device/UpsertDeviceLive`, requestBody);
 
       toast.success("Device data updated successfully!", {
         position: "top-right",
         autoClose: 2000,
       });
 
-      // Update the status of the specific gate valve
       setGateValveDataList((prevList) =>
         prevList.map((device) =>
           device.imei === imei ? { ...device, status } : device
         )
       );
-
-      console.log("Gate valve data updated successfully");
     } catch (error) {
       console.error("Failed to update Device data:", error);
       toast.error("Failed to update device data", {
@@ -288,23 +272,11 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
     navigate("/");
   };
 
+  const activeDevice = selectedView === "tp" ? threePhaseData : currentGateValve;
+
   return (
     <div className="dashboard-container">
-      <ToastContainer /> {/* Toast notifications container */}
-      <header className="dashboard-header">
-        <div className="welcome-message">
-          Welcome, <strong>{loggedInUser || "Guest"}</strong>
-        </div>
-        <div className="logout-link">
-          <button
-            onClick={() => navigate("/device-registration")}
-            style={{ cursor: "pointer" }}
-          >Device Registration
-        </button>
-          <button onClick={handleLogout}>Logout</button>
-        </div>
-      </header>
-      {/* Show loading indicator while fetching data */}
+      <ToastContainer />
       {loading ? (
         <div className="loading-container">
           <div className="spinner"></div>
@@ -312,260 +284,319 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
         </div>
       ) : (
         <div className="dashboard-content">
-          {/* 3 Phase Motor Card */}
-          {threePhaseData ? (
-            <div className="card">
-              <h3>3 Phase Motor</h3>;
-              <span
-                className="carousel-counter"
-                style={{ color: "#027368", fontWeight: "bold" }}
-              >
-                IMEI: {threePhaseData.imei}
-              </span>
-              <div className="card-body">
-                <div className="icon-row">
-                  <div className="icon-item">
-                    <FaUser size={24} color="#027368" />
-                    <p>Contact</p>
-                  </div>
-                  <div className="icon-item">
-                    <FaMapMarkerAlt size={24} color="#ff5722" />
-                    <p>Locate</p>
-                  </div>
-                  <div className="icon-item">
-                    <FaThumbsUp size={24} color="#4caf50" />
-                    <p>3 Phase</p>
-                  </div>
-                </div>
-                <div className="device-image">
-                  <img src={TP} alt="3TP" height={150} />
-                </div>
-                <div className="card-actions">
-                  <button
-                    disabled={threePhaseData.status}
-                    onClick={() =>
-                      updateThreePhaseData(
-                        threePhaseData.imei,
-                        true,
-                        null,
-                        null
-                      )
-                    }
-                  >
-                    Start
-                  </button>
-                  <button
-                    disabled={!threePhaseData.status}
-                    onClick={() =>
-                      updateThreePhaseData(
-                        threePhaseData.imei,
-                        false,
-                        null,
-                        null
-                      )
-                    }
-                  >
-                    Stop
-                  </button>
-                </div>
-                <div className="date-picker-container">
-                  <label>Start Time:</label>
-                  <DatePicker
-                    selected={startDateTP}
-                    onChange={(date) => setStartDateTP(date)}
-                    showTimeSelect
-                    dateFormat="Pp"
-                    className="date-picker"
-                  />
-                </div>
-                <div className="date-picker-container">
-                  <label>Stop Time:</label>
-                  <DatePicker
-                    selected={stopDateTP}
-                    onChange={(date) => setStopDateTP(date)}
-                    showTimeSelect
-                    dateFormat="Pp"
-                    className="date-picker"
-                  />
-                </div>
-                <div className="card-actions">
-                  <button
-                    onClick={() =>
-                      updateThreePhaseData(
-                        threePhaseData.imei,
-                        true,
-                        startDateTP,
-                        stopDateTP
-                      )
-                    }
-                  >
-                    Set
-                  </button>
-                </div>
+          <section className="panel selector-panel">
+            <div className="selector-top">
+              <div className="welcome-block">
+                <p className="welcome-label">Dashboard</p>
+                <h2>Welcome, {loggedInUser || "Guest"}</h2>
+              </div>
+              <div className="logout-link">
+                <button
+                  onClick={() => navigate("/device-registration")}
+                  style={{ cursor: "pointer" }}
+                >
+                  Device Registration
+                </button>
+                <button onClick={handleLogout}>Logout</button>
               </div>
             </div>
-          ) : (
-            <p>Loading Three Phase Data...</p>
+            <h3>Select Device View</h3>
+            <div className="view-toggle-grid">
+              <button
+                className={`view-card ${selectedView === "tp" ? "active" : ""}`}
+                disabled={!threePhaseData}
+                onClick={() => setSelectedView("tp")}
+              >
+                <span>3 Phase Motor</span>
+                <small>{threePhaseData ? "Available" : "Not Available"}</small>
+              </button>
+              <button
+                className={`view-card ${selectedView === "gv" ? "active" : ""}`}
+                disabled={gateValveDataList.length === 0}
+                onClick={() => setSelectedView("gv")}
+              >
+                <span>Gate Valve Motor</span>
+                <small>
+                  {gateValveDataList.length > 0
+                    ? `${gateValveDataList.length} Device(s)`
+                    : "Not Available"}
+                </small>
+              </button>
+            </div>
+          </section>
+
+          {activeDevice && (
+            <section className="panel status-row">
+              <div className="status-card">
+                <div className="status-head">
+                  <FaBolt />
+                  <p>Device Status</p>
+                </div>
+                <div className={`status-pill ${activeDevice.status ? "on" : "off"}`}>
+                  <span className="status-dot"></span>
+                  {activeDevice.status ? "Running" : "Stopped"}
+                </div>
+                <small style={{color:'gray'}} >
+                  IMEI: <strong>{activeDevice.imei}</strong>
+                </small>
+              </div>
+
+              <div className="battery-card">
+                <div className="status-head">
+                  <FaBatteryHalf />
+                  <p>Battery</p>
+                </div>
+                <div className="battery-value">{activeDevice.battery}V</div>
+                <span
+                  className={`battery-chip ${
+                    activeDevice.batStatus?.toLowerCase() === "low"
+                      ? "low"
+                      : "normal"
+                  }`}
+                >
+                  {activeDevice.batStatus || "Unknown"}
+                </span>
+              </div>
+            </section>
           )}
 
-          {/* Gate Valve Motor Cards - Carousel */}
-          
-          {gateValveDataList.length > 0 ? (
-            <div className="card">
-              {currentGateValve?.batStatus == "Low" ? (
-                <span className="battery-status" style={{ color: 'red' }}>
-                  Battery: {currentGateValve?.battery}V   Status: {currentGateValve?.batStatus}
-                </span>
-              ):''}
-              <h3>
-                Gate Valve Motor
-                {gateValveDataList.length === 1 ? (
-                  <span className="carousel-counter">
-                    <div className="device-imei">
-                      IMEI: {currentGateValve.imei}
-                    </div>
-                  </span>
-                ) : (
-                  gateValveDataList.length > 1 && (
-                    <span className="carousel-counter">
-                      ({currentGateValveIndex + 1}/{gateValveDataList.length})
-                      <div className="device-imei">
-                        IMEI: {currentGateValve.imei}
-                      </div>
-                    </span>
-                  )
-                )}
-              </h3>
+          {selectedView === "tp" && (
+            <section className="panel device-panel">
+              {threePhaseData ? (
+                <>
+                  <div className="device-title-row">
+                    <h3>3 Phase Motor</h3>
+                    <span className="imei-chip">IMEI: {threePhaseData.imei}</span>
+                  </div>
 
-              {/* Toggle Default Button */}
-              {currentGateValve && (
-                <div className="toggle-switch">
-                  <span className="toggle-label">Default</span>
-                  <label className="switch">
-                    <input
-                      type="checkbox"
-                      checked={currentGateValve.defaultGV}
-                      onChange={() =>
-                        toggleDefaultGateValve(currentGateValve.imei)
-                      }
-                    />
-                    <span className="slider-round"></span>
-                  </label>
-                </div>
-              )}
-
-              {gateValveDataList.length > 1 && (
-                <div className="device-header">
-                  <button className="carousel-button" onClick={prevGateValve}>
-                    <FaChevronLeft />
-                  </button>
-                  <button className="carousel-button" onClick={nextGateValve}>
-                    <FaChevronRight />
-                  </button>
-                </div>
-              )}
-
-              {currentGateValve && (
-                <div className="card-body">
                   <div className="icon-row">
                     <div className="icon-item">
-                      <FaUser size={24} color="#027368" />
+                      <FaUser size={20} color="#7a4fe0" />
                       <p>Contact</p>
                     </div>
                     <div className="icon-item">
-                      <FaMapMarkerAlt size={24} color="#ff5722" />
+                      <FaMapMarkerAlt size={20} color="#ff8b2b" />
                       <p>Locate</p>
                     </div>
+                    <div className="icon-item">
+                      <FaThumbsUp size={20} color="#30b86a" />
+                      <p>3 Phase</p>
+                    </div>
                   </div>
+
                   <div className="device-image">
-                    <img src={GV} alt="Gate Valve Motor" height={150} />
+                    <img src={TP} alt="3 Phase Motor" height={150} />
                   </div>
+
                   <div className="card-actions">
                     <button
-                      disabled={currentGateValve.status}
+                      className="action-btn start"
+                      disabled={threePhaseData.status}
                       onClick={() =>
-                        updateGatevalveData(
-                          currentGateValve.imei,
-                          true,
-                          null,
-                          null
-                        )
+                        updateThreePhaseData(threePhaseData.imei, true, null, null)
                       }
                     >
                       Start
                     </button>
                     <button
-                      disabled={!currentGateValve.status}
+                      className="action-btn stop"
+                      disabled={!threePhaseData.status}
                       onClick={() =>
-                        updateGatevalveData(
-                          currentGateValve.imei,
-                          false,
-                          null,
-                          null
-                        )
+                        updateThreePhaseData(threePhaseData.imei, false, null, null)
                       }
                     >
                       Stop
                     </button>
                   </div>
-                  <div className="date-picker-container">
-                    <label>Start Time:</label>
-                    <DatePicker
-                      selected={
-                        getGateValveDateSettings(currentGateValve.imei)
-                          .startDate
-                      }
-                      onChange={(date) =>
-                        updateGateValveDateSettings(
-                          currentGateValve.imei,
-                          "startDate",
-                          date
-                        )
-                      }
-                      showTimeSelect
-                      dateFormat="Pp"
-                      className="date-picker"
-                    />
+
+                  <div className="date-time-grid">
+                    <div className="date-picker-container">
+                      <label>Start Time</label>
+                      <DatePicker
+                        selected={startDateTP}
+                        onChange={(date) => setStartDateTP(date)}
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="date-picker"
+                      />
+                    </div>
+                    <div className="date-picker-container">
+                      <label>Stop Time</label>
+                      <DatePicker
+                        selected={stopDateTP}
+                        onChange={(date) => setStopDateTP(date)}
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="date-picker"
+                      />
+                    </div>
                   </div>
-                  <div className="date-picker-container">
-                    <label>Stop Time:</label>
-                    <DatePicker
-                      selected={
-                        getGateValveDateSettings(currentGateValve.imei).stopDate
-                      }
-                      onChange={(date) =>
-                        updateGateValveDateSettings(
-                          currentGateValve.imei,
-                          "stopDate",
-                          date
-                        )
-                      }
-                      showTimeSelect
-                      dateFormat="Pp"
-                      className="date-picker"
-                    />
-                  </div>
+
                   <div className="card-actions">
                     <button
+                      className="action-btn set"
+                      onClick={() =>
+                        updateThreePhaseData(
+                          threePhaseData.imei,
+                          true,
+                          startDateTP,
+                          stopDateTP
+                        )
+                      }
+                    >
+                      Set Schedule
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <p>No Three Phase Motor Data Available</p>
+              )}
+            </section>
+          )}
+
+          {selectedView === "gv" && (
+            <section className="panel device-panel">
+              {gateValveDataList.length > 0 && currentGateValve ? (
+                <>
+                  <div className="device-title-row">
+                    <h3>Gate Valve Motor</h3>
+                    <span className="imei-chip">IMEI: {currentGateValve.imei}</span>
+                  </div>
+
+                  <div className="sub-controls">
+                    <div className="toggle-switch">
+                      <span className="toggle-label">Default Device</span>
+                      <label className="switch">
+                        <input
+                          type="checkbox"
+                          checked={currentGateValve.defaultGV}
+                          onChange={() =>
+                            toggleDefaultGateValve(currentGateValve.imei)
+                          }
+                        />
+                        <span className="slider-round"></span>
+                      </label>
+                    </div>
+
+                    {gateValveDataList.length > 1 && (
+                      <div className="carousel-controls">
+                        <button className="carousel-button" onClick={prevGateValve}>
+                          <span aria-hidden="true" className="arrow-glyph">
+                            &#8249;
+                          </span>
+                        </button>
+                        <span className="carousel-counter">
+                          {currentGateValveIndex + 1}/{gateValveDataList.length}
+                        </span>
+                        <button className="carousel-button" onClick={nextGateValve}>
+                          <span aria-hidden="true" className="arrow-glyph">
+                            &#8250;
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="icon-row">
+                    <div className="icon-item">
+                      <FaUser size={20} color="#7a4fe0" />
+                      <p>Contact</p>
+                    </div>
+                    <div className="icon-item">
+                      <FaMapMarkerAlt size={20} color="#ff8b2b" />
+                      <p>Locate</p>
+                    </div>
+                    <div className="icon-item">
+                      <FaCheckCircle size={20} color="#30b86a" />
+                      <p>Gate Valve</p>
+                    </div>
+                  </div>
+
+                  <div className="device-image">
+                    <img src={GV} alt="Gate Valve Motor" height={150} />
+                  </div>
+
+                  <div className="card-actions">
+                    <button
+                      className="action-btn start"
+                      disabled={currentGateValve.status}
+                      onClick={() =>
+                        updateGatevalveData(currentGateValve.imei, true, null, null)
+                      }
+                    >
+                      Start
+                    </button>
+                    <button
+                      className="action-btn stop"
+                      disabled={!currentGateValve.status}
+                      onClick={() =>
+                        updateGatevalveData(currentGateValve.imei, false, null, null)
+                      }
+                    >
+                      Stop
+                    </button>
+                  </div>
+
+                  <div className="date-time-grid">
+                    <div className="date-picker-container">
+                      <label>Start Time</label>
+                      <DatePicker
+                        selected={
+                          getGateValveDateSettings(currentGateValve.imei).startDate
+                        }
+                        onChange={(date) =>
+                          updateGateValveDateSettings(
+                            currentGateValve.imei,
+                            "startDate",
+                            date
+                          )
+                        }
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="date-picker"
+                      />
+                    </div>
+                    <div className="date-picker-container">
+                      <label>Stop Time</label>
+                      <DatePicker
+                        selected={
+                          getGateValveDateSettings(currentGateValve.imei).stopDate
+                        }
+                        onChange={(date) =>
+                          updateGateValveDateSettings(
+                            currentGateValve.imei,
+                            "stopDate",
+                            date
+                          )
+                        }
+                        showTimeSelect
+                        dateFormat="Pp"
+                        className="date-picker"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="card-actions">
+                    <button
+                      className="action-btn set"
                       onClick={() =>
                         updateGatevalveData(
                           currentGateValve.imei,
                           true,
                           getGateValveDateSettings(currentGateValve.imei)
                             .startDate,
-                          getGateValveDateSettings(currentGateValve.imei)
-                            .stopDate
+                          getGateValveDateSettings(currentGateValve.imei).stopDate
                         )
                       }
                     >
-                      Set
+                      Set Schedule
                     </button>
                   </div>
-                </div>
+                </>
+              ) : (
+                <p>No Gate Valve Data Available</p>
               )}
-            </div>
-          ) : (
-            <p>No Gate Valve Data Available</p>
+            </section>
           )}
         </div>
       )}
