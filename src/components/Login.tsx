@@ -4,11 +4,11 @@ import axios from "axios";
 import "./Login.css";
 import Constants from "../Constants";
 import loginImage from "../assets/images/loginPlant.jpg";
-import logo from "/src/assets/images/logo.jpg";
+import logo from "/src/assets/images/logo.png";
 import { Link } from "react-router-dom";
 
 interface LoginProps {
-  setLoggedInUser: (user: string) => void;
+  setLoggedInUser: (user: string | null) => void;
 }
 
 const Login = ({ setLoggedInUser }: LoginProps) => {
@@ -18,6 +18,7 @@ const Login = ({ setLoggedInUser }: LoginProps) => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('BASE_URL: '+Constants.BASE_URL);
     try {
       const response = await axios.post(Constants.BASE_URL + "/Auth/Login", {
         userName,
@@ -36,7 +37,7 @@ const Login = ({ setLoggedInUser }: LoginProps) => {
       <div className="login-box">
         <div className="login-form">
           <p className="login-eyebrow">Smart Motor Control</p>
-          <h2>Welcome to Dhiever</h2>
+          <h2>Welcome to Pijeen</h2>
           <p className="login-subtitle">
             Sign in to monitor and schedule your devices in real time.
           </p>

@@ -5,8 +5,8 @@ import Constants from "../Constants";
 import axios from "axios";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import TP from "../assets/images/3TP.png";
-import GV from "../assets/images/GV.png";
+import TP from "../assets/images/TP1.png";
+import GV from "../assets/images/GV1.png";
 import {
   FaUser,
   FaMapMarkerAlt,
@@ -20,30 +20,33 @@ import "react-toastify/dist/ReactToastify.css";
 
 interface DashboardProps {
   loggedInUser: string | null;
+  onLogout: () => void;
 }
 
 interface DeviceLiveData {
   imei: string;
-  status: boolean;
+  status: boolean | null;
   starTime: string;
   endTime: string;
   deviceType: number;
   defaultGV: boolean;
   battery: number;
   batStatus: string;
+  rssi?: number | null;
+  repeatSchedule?: boolean;
 }
 
 type DeviceView = "tp" | "gv";
 
-const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
+const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, onLogout }) => {
   const [startDateTP, setStartDateTP] = useState<Date | null>(new Date());
   const [stopDateTP, setStopDateTP] = useState<Date | null>(new Date());
 
   const [threePhaseData, setThreePhaseData] = useState<DeviceLiveData | null>(
-    null
+    null,
   );
   const [gateValveDataList, setGateValveDataList] = useState<DeviceLiveData[]>(
-    []
+    [],
   );
 
   const [selectedView, setSelectedView] = useState<DeviceView>("tp");
@@ -51,6 +54,25 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
   const [gateValveDateSettings, setGateValveDateSettings] = useState<{
     [key: string]: { startDate: Date | null; stopDate: Date | null };
   }>({});
+  const [threePhaseRepeat, setThreePhaseRepeat] = useState(false);
+  const [gateValveRepeatSettings, setGateValveRepeatSettings] = useState<{
+    [key: string]: boolean;
+  }>({});
+  const [gateValveActionLoading, setGateValveActionLoading] = useState<{
+    [imei: string]: "open" | "close" | null;
+  }>({});
+
+  const updateDeviceStatus = (imei: string, status: boolean) => {
+    setThreePhaseData((prev) =>
+      prev && prev.imei === imei ? { ...prev, status } : prev,
+    );
+
+    setGateValveDataList((prev) =>
+      prev.map((device) =>
+        device.imei === imei ? { ...device, status } : device,
+      ),
+    );
+  };
 
   const [loading, setLoading] = useState(true);
 
@@ -68,7 +90,7 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
   const updateGateValveDateSettings = (
     imei: string,
     field: "startDate" | "stopDate",
-    value: Date | null
+    value: Date | null,
   ) => {
     setGateValveDateSettings((prev) => ({
       ...prev,
@@ -79,6 +101,25 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
     }));
   };
 
+  const getGateValveRepeatSetting = (imei: string) =>
+    gateValveRepeatSettings[imei] ?? false;
+
+  const updateGateValveRepeatSetting = (imei: string, value: boolean) => {
+    setGateValveRepeatSettings((prev) => ({
+      ...prev,
+      [imei]: value,
+    }));
+  };
+
+  const parseServerDateAsUtc = (
+    value: string | null | undefined,
+  ): Date | null => {
+    if (!value) return null;
+    const normalized = /z$/i.test(value) ? value : `${value}Z`;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
   useEffect(() => {
     let isMounted = true;
 
@@ -86,36 +127,40 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
       setLoading(true);
       try {
         const response = await axios.get<DeviceLiveData[]>(
-          `${Constants.BASE_URL}/Device/UserData/${loggedInUser}`
+          `${Constants.BASE_URL}/Device/UserData/${loggedInUser}`,
         );
 
         if (isMounted && response.data.length > 0) {
           const threePhaseDevice = response.data.find(
-            (device) => device.deviceType === 1
+            (device) => device.deviceType === 1,
           );
 
           const gateValveDevices = response.data.filter(
-            (device) => device.deviceType === 2
+            (device) => device.deviceType === 2,
           );
 
           setThreePhaseData(threePhaseDevice || null);
           setGateValveDataList(gateValveDevices);
 
           if (threePhaseDevice) {
-            setStartDateTP(new Date(threePhaseDevice.starTime));
-            setStopDateTP(new Date(threePhaseDevice.endTime));
+            setStartDateTP(parseServerDateAsUtc(threePhaseDevice.starTime));
+            setStopDateTP(parseServerDateAsUtc(threePhaseDevice.endTime));
+            setThreePhaseRepeat(threePhaseDevice.repeatSchedule ?? false);
           }
 
           const dateSettings: {
             [key: string]: { startDate: Date | null; stopDate: Date | null };
           } = {};
+          const repeatSettings: { [key: string]: boolean } = {};
           gateValveDevices.forEach((device) => {
             dateSettings[device.imei] = {
-              startDate: new Date(device.starTime),
-              stopDate: new Date(device.endTime),
+              startDate: parseServerDateAsUtc(device.starTime),
+              stopDate: parseServerDateAsUtc(device.endTime),
             };
+            repeatSettings[device.imei] = device.repeatSchedule ?? false;
           });
           setGateValveDateSettings(dateSettings);
+          setGateValveRepeatSettings(repeatSettings);
 
           if (!threePhaseDevice && gateValveDevices.length > 0) {
             setSelectedView("gv");
@@ -134,6 +179,31 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
       isMounted = false;
     };
   }, [loggedInUser]);
+
+  useEffect(() => {
+    const eventSource = new EventSource(
+      `${Constants.BASE_URL}/Device/StatusStream`,
+    );
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload?.imei && typeof payload.status === "boolean") {
+          updateDeviceStatus(payload.imei, payload.status);
+        }
+      } catch (error) {
+        console.error("Failed to parse status stream event", error);
+      }
+    };
+
+    eventSource.onerror = () => {
+      eventSource.close();
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, []);
 
   const toggleDefaultGateValve = async (imei: string) => {
     try {
@@ -161,20 +231,17 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
     }
   };
 
-  const formatDateToLocal = (date: Date | null) => {
+  const formatDateToUtc = (date: Date | null) => {
     if (!date) return null;
-
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60000);
-
-    return localDate.toISOString().replace("Z", "");
+    return date.toISOString();
   };
 
   const updateThreePhaseData = async (
     imei: string,
-    status: boolean,
+    status: boolean | null,
     startTime: Date | null,
-    endTime: Date | null
+    endTime: Date | null,
+    repeat: boolean,
   ) => {
     if (!imei) {
       console.error("IMEI is missing");
@@ -185,11 +252,15 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
       const requestBody = {
         imei,
         status,
-        starTime: formatDateToLocal(startTime),
-        endTime: formatDateToLocal(endTime),
+        starTime: formatDateToUtc(startTime),
+        endTime: formatDateToUtc(endTime),
+        repeatSchedule: repeat,
       };
 
-      await axios.post(`${Constants.BASE_URL}/Device/UpsertDeviceLive`, requestBody);
+      await axios.post(
+        `${Constants.BASE_URL}/Device/UpsertDeviceLive`,
+        requestBody,
+      );
 
       toast.success("Device data updated successfully!", {
         position: "top-right",
@@ -197,14 +268,17 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
       });
 
       setThreePhaseData(
-        threePhaseData ? { ...threePhaseData, status } : null
+        threePhaseData
+          ? { ...threePhaseData, status, repeatSchedule: repeat }
+          : null,
       );
+      setThreePhaseRepeat(repeat);
 
       if (status) {
         setGateValveDataList((prevList) =>
           prevList.map((device) =>
-            device.defaultGV ? { ...device, status } : device
-          )
+            device.defaultGV ? { ...device, status } : device,
+          ),
         );
       }
     } catch (error) {
@@ -218,9 +292,10 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
 
   const updateGatevalveData = async (
     imei: string,
-    status: boolean,
+    status: boolean | null,
     startTime: Date | null,
-    endTime: Date | null
+    endTime: Date | null,
+    repeat: boolean,
   ) => {
     if (!imei) {
       console.error("IMEI is missing");
@@ -231,11 +306,15 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
       const requestBody = {
         imei,
         status,
-        starTime: formatDateToLocal(startTime),
-        endTime: formatDateToLocal(endTime),
+        startTime: formatDateToUtc(startTime),
+        endTime: formatDateToUtc(endTime),
+        repeatSchedule: repeat,
       };
 
-      await axios.post(`${Constants.BASE_URL}/Device/UpsertDeviceLive`, requestBody);
+      await axios.post(
+        `${Constants.BASE_URL}/Device/UpsertDeviceLive`,
+        requestBody,
+      );
 
       toast.success("Device data updated successfully!", {
         position: "top-right",
@@ -244,9 +323,15 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
 
       setGateValveDataList((prevList) =>
         prevList.map((device) =>
-          device.imei === imei ? { ...device, status } : device
-        )
+          device.imei === imei
+            ? { ...device, status, repeatSchedule: repeat }
+            : device,
+        ),
       );
+      setGateValveRepeatSettings((prev) => ({
+        ...prev,
+        [imei]: repeat,
+      }));
     } catch (error) {
       console.error("Failed to update Device data:", error);
       toast.error("Failed to update device data", {
@@ -258,21 +343,82 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
 
   const nextGateValve = () => {
     setCurrentGateValveIndex((prev) =>
-      prev === gateValveDataList.length - 1 ? 0 : prev + 1
+      prev === gateValveDataList.length - 1 ? 0 : prev + 1,
     );
   };
 
   const prevGateValve = () => {
     setCurrentGateValveIndex((prev) =>
-      prev === 0 ? gateValveDataList.length - 1 : prev - 1
+      prev === 0 ? gateValveDataList.length - 1 : prev - 1,
     );
   };
 
   const handleLogout = () => {
+    onLogout();
     navigate("/");
   };
 
-  const activeDevice = selectedView === "tp" ? threePhaseData : currentGateValve;
+  const activeDevice =
+    selectedView === "tp" ? threePhaseData : currentGateValve;
+
+  const sendGateValveCommand = async (
+    imei: string,
+    action: "open" | "close",
+  ) => {
+    if (!imei) return;
+
+    setGateValveActionLoading((prev) => ({ ...prev, [imei]: action }));
+
+    try {
+      await axios.post(`${Constants.BASE_URL}/Device/PublishGateValveCommand`, {
+        imei,
+        status: action === "open",
+      });
+
+      toast.success(
+        action === "open" ? "Opening gate valve..." : "Closing gate valve...",
+      );
+    } catch (error) {
+      console.error("Failed to send gate valve command: ", error);
+      toast.error("Failed to send gate valve command", {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } finally {
+      setGateValveActionLoading((prev) => ({ ...prev, [imei]: null }));
+    }
+  };
+
+  // const updateGateValveTempStatus = async (imei: string, status: boolean) => {
+  //   if (!imei) return;
+
+  //   try {
+  //     await axios.post(`${Constants.BASE_URL}/Device/UpsertDeviceLive`, {
+  //       imei,
+  //       status,
+  //       startTime: null,
+  //       endTime: null,
+  //       repeatSchedule: getGateValveRepeatSetting(imei),
+  //     });
+
+  //     setGateValveDataList((prevList) =>
+  //       prevList.map((device) =>
+  //         device.imei === imei ? { ...device, status } : device,
+  //       ),
+  //     );
+
+  //     toast.success(status ? "Temp Open applied" : "Temp Close applied", {
+  //       position: "top-right",
+  //       autoClose: 2000,
+  //     });
+  //   } catch (error) {
+  //     console.error("Failed to update temp gate valve status:", error);
+  //     toast.error("Failed to update temp gate valve status", {
+  //       position: "top-right",
+  //       autoClose: 2000,
+  //     });
+  //   }
+  // };
 
   return (
     <div className="dashboard-container">
@@ -332,11 +478,13 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
                   <FaBolt />
                   <p>Device Status</p>
                 </div>
-                <div className={`status-pill ${activeDevice.status ? "on" : "off"}`}>
+                <div
+                  className={`status-pill ${activeDevice.status ? "on" : "off"}`}
+                >
                   <span className="status-dot"></span>
                   {activeDevice.status ? "Running" : "Stopped"}
                 </div>
-                <small style={{color:'gray'}} >
+                <small style={{ color: "gray" }}>
                   IMEI: <strong>{activeDevice.imei}</strong>
                 </small>
               </div>
@@ -350,8 +498,8 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
                 <span
                   className={`battery-chip ${
                     activeDevice.batStatus?.toLowerCase() === "low"
-                      ? "low"
-                      : "normal"
+                      ? "Low"
+                      : "Good"
                   }`}
                 >
                   {activeDevice.batStatus || "Unknown"}
@@ -366,7 +514,9 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
                 <>
                   <div className="device-title-row">
                     <h3>3 Phase Motor</h3>
-                    <span className="imei-chip">IMEI: {threePhaseData.imei}</span>
+                    <span className="imei-chip">
+                      IMEI: {threePhaseData.imei}
+                    </span>
                   </div>
 
                   <div className="icon-row">
@@ -391,18 +541,30 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
                   <div className="card-actions">
                     <button
                       className="action-btn start"
-                      disabled={threePhaseData.status}
+                      disabled={threePhaseData.status ?? false}
                       onClick={() =>
-                        updateThreePhaseData(threePhaseData.imei, true, null, null)
+                        updateThreePhaseData(
+                          threePhaseData.imei,
+                          true,
+                          null,
+                          null,
+                          threePhaseRepeat,
+                        )
                       }
                     >
                       Start
                     </button>
                     <button
                       className="action-btn stop"
-                      disabled={!threePhaseData.status}
+                      disabled={!(threePhaseData.status ?? false)}
                       onClick={() =>
-                        updateThreePhaseData(threePhaseData.imei, false, null, null)
+                        updateThreePhaseData(
+                          threePhaseData.imei,
+                          false,
+                          null,
+                          null,
+                          threePhaseRepeat,
+                        )
                       }
                     >
                       Stop
@@ -432,15 +594,29 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
                     </div>
                   </div>
 
+                  <div className="repeat-control">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={threePhaseRepeat}
+                        onChange={(event) =>
+                          setThreePhaseRepeat(event.target.checked)
+                        }
+                      />
+                      Repeat ON/OFF schedule
+                    </label>
+                  </div>
+
                   <div className="card-actions">
                     <button
                       className="action-btn set"
                       onClick={() =>
                         updateThreePhaseData(
                           threePhaseData.imei,
-                          true,
+                          null,
                           startDateTP,
-                          stopDateTP
+                          stopDateTP,
+                          threePhaseRepeat,
                         )
                       }
                     >
@@ -458,140 +634,227 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser }) => {
             <section className="panel device-panel">
               {gateValveDataList.length > 0 && currentGateValve ? (
                 <>
-                  <div className="device-title-row">
-                    <h3>Gate Valve Motor</h3>
-                    <span className="imei-chip">IMEI: {currentGateValve.imei}</span>
-                  </div>
+                  {(() => {
+                    const actionLoading =
+                      gateValveActionLoading[currentGateValve.imei];
+                    const isCommandPending =
+                      actionLoading === "open" || actionLoading === "close";
 
-                  <div className="sub-controls">
-                    <div className="toggle-switch">
-                      <span className="toggle-label">Default Device</span>
-                      <label className="switch">
-                        <input
-                          type="checkbox"
-                          checked={currentGateValve.defaultGV}
-                          onChange={() =>
-                            toggleDefaultGateValve(currentGateValve.imei)
-                          }
-                        />
-                        <span className="slider-round"></span>
-                      </label>
-                    </div>
-
-                    {gateValveDataList.length > 1 && (
-                      <div className="carousel-controls">
-                        <button className="carousel-button" onClick={prevGateValve}>
-                          <span aria-hidden="true" className="arrow-glyph">
-                            &#8249;
+                    return (
+                      <>
+                        <div className="device-title-row">
+                          <h3>Gate Valve Motor</h3>
+                          <span className="imei-chip">
+                            IMEI: {currentGateValve.imei}
                           </span>
-                        </button>
-                        <span className="carousel-counter">
-                          {currentGateValveIndex + 1}/{gateValveDataList.length}
-                        </span>
-                        <button className="carousel-button" onClick={nextGateValve}>
-                          <span aria-hidden="true" className="arrow-glyph">
-                            &#8250;
-                          </span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                        </div>
 
-                  <div className="icon-row">
-                    <div className="icon-item">
-                      <FaUser size={20} color="#7a4fe0" />
-                      <p>Contact</p>
-                    </div>
-                    <div className="icon-item">
-                      <FaMapMarkerAlt size={20} color="#ff8b2b" />
-                      <p>Locate</p>
-                    </div>
-                    <div className="icon-item">
-                      <FaCheckCircle size={20} color="#30b86a" />
-                      <p>Gate Valve</p>
-                    </div>
-                  </div>
+                        <div className="sub-controls">
+                          <div className="toggle-switch">
+                            <span className="toggle-label">Default Device</span>
+                            <label className="switch">
+                              <input
+                                type="checkbox"
+                                checked={currentGateValve.defaultGV}
+                                onChange={() =>
+                                  toggleDefaultGateValve(currentGateValve.imei)
+                                }
+                              />
+                              <span className="slider-round"></span>
+                            </label>
+                          </div>
 
-                  <div className="device-image">
-                    <img src={GV} alt="Gate Valve Motor" height={150} />
-                  </div>
+                          {gateValveDataList.length > 1 && (
+                            <div className="carousel-controls">
+                              <button
+                                className="carousel-button"
+                                onClick={prevGateValve}
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className="arrow-glyph"
+                                >
+                                  &#8249;
+                                </span>
+                              </button>
+                              <span className="carousel-counter">
+                                {currentGateValveIndex + 1}/
+                                {gateValveDataList.length}
+                              </span>
+                              <button
+                                className="carousel-button"
+                                onClick={nextGateValve}
+                              >
+                                <span
+                                  aria-hidden="true"
+                                  className="arrow-glyph"
+                                >
+                                  &#8250;
+                                </span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
 
-                  <div className="card-actions">
-                    <button
-                      className="action-btn start"
-                      disabled={currentGateValve.status}
-                      onClick={() =>
-                        updateGatevalveData(currentGateValve.imei, true, null, null)
-                      }
-                    >
-                      Start
-                    </button>
-                    <button
-                      className="action-btn stop"
-                      disabled={!currentGateValve.status}
-                      onClick={() =>
-                        updateGatevalveData(currentGateValve.imei, false, null, null)
-                      }
-                    >
-                      Stop
-                    </button>
-                  </div>
+                        <div className="icon-row">
+                          <div className="icon-item">
+                            <FaUser size={20} color="#7a4fe0" />
+                            <p>Contact</p>
+                          </div>
+                          <div className="icon-item">
+                            <FaMapMarkerAlt size={20} color="#ff8b2b" />
+                            <p>Locate</p>
+                          </div>
+                          <div className="icon-item">
+                            <FaCheckCircle size={20} color="#30b86a" />
+                            <p>Gate Valve</p>
+                          </div>
+                        </div>
 
-                  <div className="date-time-grid">
-                    <div className="date-picker-container">
-                      <label>Start Time</label>
-                      <DatePicker
-                        selected={
-                          getGateValveDateSettings(currentGateValve.imei).startDate
-                        }
-                        onChange={(date) =>
-                          updateGateValveDateSettings(
-                            currentGateValve.imei,
-                            "startDate",
-                            date
-                          )
-                        }
-                        showTimeSelect
-                        dateFormat="Pp"
-                        className="date-picker"
-                      />
-                    </div>
-                    <div className="date-picker-container">
-                      <label>Stop Time</label>
-                      <DatePicker
-                        selected={
-                          getGateValveDateSettings(currentGateValve.imei).stopDate
-                        }
-                        onChange={(date) =>
-                          updateGateValveDateSettings(
-                            currentGateValve.imei,
-                            "stopDate",
-                            date
-                          )
-                        }
-                        showTimeSelect
-                        dateFormat="Pp"
-                        className="date-picker"
-                      />
-                    </div>
-                  </div>
+                        <div className="device-image">
+                          <img src={GV} alt="Gate Valve Motor" height={150} />
+                        </div>
 
-                  <div className="card-actions">
-                    <button
-                      className="action-btn set"
-                      onClick={() =>
-                        updateGatevalveData(
-                          currentGateValve.imei,
-                          true,
-                          getGateValveDateSettings(currentGateValve.imei)
-                            .startDate,
-                          getGateValveDateSettings(currentGateValve.imei).stopDate
-                        )
-                      }
-                    >
-                      Set Schedule
-                    </button>
-                  </div>
+                        <div className="card-actions">
+                          <button
+                            className="action-btn start"
+                            disabled={
+                              isCommandPending ||
+                              (currentGateValve.status ?? false)
+                            }
+                            onClick={() =>
+                              sendGateValveCommand(
+                                currentGateValve.imei,
+                                "open",
+                              )
+                            }
+                          >
+                            {actionLoading === "open" ? "Opening..." : "Open"}
+                          </button>
+                          <button
+                            className="action-btn stop"
+                            disabled={
+                              isCommandPending ||
+                              !(currentGateValve.status ?? false)
+                            }
+                            onClick={() =>
+                              sendGateValveCommand(
+                                currentGateValve.imei,
+                                "close",
+                              )
+                            }
+                          >
+                            {actionLoading === "close" ? "Closing..." : "Close"}
+                          </button>
+                          {/* <div className="card-actions">
+                            <button
+                              className="action-btn start"
+                              onClick={() =>
+                                updateGateValveTempStatus(
+                                  currentGateValve.imei,
+                                  true,
+                                )
+                              }
+                            >
+                              TempOpen
+                            </button>
+
+                            <button
+                              className="action-btn stop"
+                              onClick={() =>
+                                updateGateValveTempStatus(
+                                  currentGateValve.imei,
+                                  false,
+                                )
+                              }
+                            >
+                              TempClose
+                            </button>
+                          </div> */}
+                        </div>
+
+                        <div className="date-time-grid">
+                          <div className="date-picker-container">
+                            <label>Start Time</label>
+                            <DatePicker
+                              selected={
+                                getGateValveDateSettings(currentGateValve.imei)
+                                  .startDate
+                              }
+                              onChange={(date) =>
+                                updateGateValveDateSettings(
+                                  currentGateValve.imei,
+                                  "startDate",
+                                  date,
+                                )
+                              }
+                              showTimeSelect
+                              dateFormat="Pp"
+                              className="date-picker"
+                            />
+                          </div>
+                          <div className="date-picker-container">
+                            <label>Stop Time</label>
+                            <DatePicker
+                              selected={
+                                getGateValveDateSettings(currentGateValve.imei)
+                                  .stopDate
+                              }
+                              onChange={(date) =>
+                                updateGateValveDateSettings(
+                                  currentGateValve.imei,
+                                  "stopDate",
+                                  date,
+                                )
+                              }
+                              showTimeSelect
+                              dateFormat="Pp"
+                              className="date-picker"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="repeat-control">
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={getGateValveRepeatSetting(
+                                currentGateValve.imei,
+                              )}
+                              onChange={(event) =>
+                                updateGateValveRepeatSetting(
+                                  currentGateValve.imei,
+                                  event.target.checked,
+                                )
+                              }
+                            />
+                            Repeat ON/OFF schedule
+                          </label>
+                        </div>
+
+                        <div className="card-actions">
+                          <button
+                            className="action-btn set"
+                            onClick={() =>
+                              updateGatevalveData(
+                                currentGateValve.imei,
+                                null,
+                                getGateValveDateSettings(currentGateValve.imei)
+                                  .startDate,
+                                getGateValveDateSettings(currentGateValve.imei)
+                                  .stopDate,
+                                getGateValveRepeatSetting(
+                                  currentGateValve.imei,
+                                ),
+                              )
+                            }
+                          >
+                            Set Schedule
+                          </button>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </>
               ) : (
                 <p>No Gate Valve Data Available</p>

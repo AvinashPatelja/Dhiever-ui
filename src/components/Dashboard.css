@@ -346,6 +346,20 @@
   align-items: start;
 }
 
+.repeat-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.repeat-control input {
+  width: 18px;
+  height: 18px;
+}
+
 .date-picker-container label {
   display: block;
   font-size: 13px;
