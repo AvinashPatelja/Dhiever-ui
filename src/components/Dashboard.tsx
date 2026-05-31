@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
 import Constants from "../Constants";
@@ -111,74 +111,98 @@ const Dashboard: React.FC<DashboardProps> = ({ loggedInUser, onLogout }) => {
     }));
   };
 
-  const parseServerDateAsUtc = (
-    value: string | null | undefined,
-  ): Date | null => {
+  const parseServerDateAsUtc = useCallback((value: string | null | undefined): Date | null => {
     if (!value) return null;
     const normalized = /z$/i.test(value) ? value : `${value}Z`;
     const parsed = new Date(normalized);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
-  };
+  }, []);
+
+  const fetchLiveData = useCallback(async (showLoading = false) => {
+    if (!loggedInUser) return;
+
+    if (showLoading) {
+      setLoading(true);
+    }
+
+    try {
+      const response = await axios.get<DeviceLiveData[]>(
+        `${Constants.BASE_URL}/Device/UserData/${loggedInUser}`,
+      );
+
+      if (response.data.length > 0) {
+        const threePhaseDevice = response.data.find(
+          (device) => device.deviceType === 1,
+        );
+
+        const gateValveDevices = response.data.filter(
+          (device) => device.deviceType === 2,
+        );
+
+        setThreePhaseData(threePhaseDevice || null);
+        setGateValveDataList(gateValveDevices);
+
+        if (threePhaseDevice) {
+          setStartDateTP(parseServerDateAsUtc(threePhaseDevice.starTime));
+          setStopDateTP(parseServerDateAsUtc(threePhaseDevice.endTime));
+          setThreePhaseRepeat(threePhaseDevice.repeatSchedule ?? false);
+        }
+
+        const dateSettings: {
+          [key: string]: { startDate: Date | null; stopDate: Date | null };
+        } = {};
+        const repeatSettings: { [key: string]: boolean } = {};
+
+        gateValveDevices.forEach((device) => {
+          dateSettings[device.imei] = {
+            startDate: parseServerDateAsUtc(device.starTime),
+            stopDate: parseServerDateAsUtc(device.endTime),
+          };
+          repeatSettings[device.imei] = device.repeatSchedule ?? false;
+        });
+
+        setGateValveDateSettings(dateSettings);
+        setGateValveRepeatSettings(repeatSettings);
+
+        if (!threePhaseDevice && gateValveDevices.length > 0) {
+          setSelectedView("gv");
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch data:", error);
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  }, [loggedInUser, parseServerDateAsUtc]);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get<DeviceLiveData[]>(
-          `${Constants.BASE_URL}/Device/UserData/${loggedInUser}`,
-        );
-
-        if (isMounted && response.data.length > 0) {
-          const threePhaseDevice = response.data.find(
-            (device) => device.deviceType === 1,
-          );
-
-          const gateValveDevices = response.data.filter(
-            (device) => device.deviceType === 2,
-          );
-
-          setThreePhaseData(threePhaseDevice || null);
-          setGateValveDataList(gateValveDevices);
-
-          if (threePhaseDevice) {
-            setStartDateTP(parseServerDateAsUtc(threePhaseDevice.starTime));
-            setStopDateTP(parseServerDateAsUtc(threePhaseDevice.endTime));
-            setThreePhaseRepeat(threePhaseDevice.repeatSchedule ?? false);
-          }
-
-          const dateSettings: {
-            [key: string]: { startDate: Date | null; stopDate: Date | null };
-          } = {};
-          const repeatSettings: { [key: string]: boolean } = {};
-          gateValveDevices.forEach((device) => {
-            dateSettings[device.imei] = {
-              startDate: parseServerDateAsUtc(device.starTime),
-              stopDate: parseServerDateAsUtc(device.endTime),
-            };
-            repeatSettings[device.imei] = device.repeatSchedule ?? false;
-          });
-          setGateValveDateSettings(dateSettings);
-          setGateValveRepeatSettings(repeatSettings);
-
-          if (!threePhaseDevice && gateValveDevices.length > 0) {
-            setSelectedView("gv");
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch data:", error);
-      } finally {
-        setLoading(false);
-      }
+    const loadInitialData = async () => {
+      if (!isMounted) return;
+      await fetchLiveData(true);
     };
 
-    fetchData();
+    loadInitialData();
 
     return () => {
       isMounted = false;
     };
-  }, [loggedInUser]);
+  }, [loggedInUser, fetchLiveData]);
+
+  useEffect(() => {
+    if (!loggedInUser) return;
+
+    const intervalId = window.setInterval(() => {
+      void fetchLiveData(false);
+    }, 10000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [loggedInUser, fetchLiveData]);
 
   useEffect(() => {
     const eventSource = new EventSource(
